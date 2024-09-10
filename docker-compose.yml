@@ -1,0 +1,43 @@
+
+services:
+  mysql:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: react_db
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./react-node-mysql-backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - react-network
+
+  backend:
+    build: ./react-node-mysql-backend
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mysql
+    networks:
+      - react-network
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASSWORD: admin
+      DB_NAME: react_db
+
+  frontend:
+    build: ./react-node-mysql-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - react-network
+
+networks:
+  react-network:
+
+volumes:
+  mysql_data:
