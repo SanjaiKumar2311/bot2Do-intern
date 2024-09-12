@@ -1,51 +1,51 @@
+// index.js
 const express = require('express');
-const mysql = require('mysql2');
+const mongoose = require('mongoose');
 const cors = require('cors');
 
+// Initialize the app
 const app = express();
+
+// Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json()); // to parse JSON body
 
-// MySQL connection
+// MongoDB connection
+mongoose.connect('mongodb://localhost:27017/usersdb', { useNewUrlParser: true, useUnifiedTopology: true })
+    .then(() => console.log('MongoDB connected'))
+    .catch(err => console.error('MongoDB connection error:', err));
 
-const db = mysql.createConnection({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || 'your_password',
-  database: process.env.DB_NAME || 'react_db'
+// User schema and model
+const UserSchema = new mongoose.Schema({
+    name: String,
+    email: String
 });
 
-db.connect((err) => {
-  if (err) {
-    console.log('Error connecting to MySQL:', err);
-    return;
-  }
-  console.log('Connected to MySQL database.');
+const User = mongoose.model('User', UserSchema);
+
+// Routes
+app.get('/users', async (req, res) => {
+    try {
+        const users = await User.find();
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
-
-
-// API to get users
-app.get('/users', (req, res) => {
-    db.query('SELECT * FROM users', (err, results) => {
-        if (err) {
-            return res.status(500).send(err);
-        }
-        res.json(results);
-    });
-});
-
-// API to add a new user
-app.post('/users', (req, res) => {
+app.post('/users', async (req, res) => {
     const { name, email } = req.body;
-    db.query('INSERT INTO users (name, email) VALUES (?, ?)', [name, email], (err, result) => {
-        if (err) {
-            return res.status(500).send(err);
-        }
-        res.json({ id: result.insertId, name, email });
-    });
+    const newUser = new User({ name, email });
+    try {
+        await newUser.save();
+        res.status(201).json(newUser);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
 });
 
-app.listen(5000, () => {
-    console.log('Server running on port 5000');
+// Start the server
+const PORT = 5000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });
